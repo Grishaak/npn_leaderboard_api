@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const n = Math.max(1, Math.min(50, Number(req.query?.n || 10)));
 
     // Берём "запас" (например, 5×N), чтобы корректно разрулить тай-брейк локально
-    ids = await redis.zrange(ZKEY, 0, n * 5 - 1, { rev: true }); // айдишники по очкам
+    const ids = await redis.zrange(ZKEY, 0, n * 5 - 1, { rev: true }); // айдишники по очкам
     // для каждого — достаём HASH
     const entries = (await Promise.all(
       ids.map(async (id) => {
