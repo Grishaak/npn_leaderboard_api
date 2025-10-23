@@ -1,5 +1,5 @@
 {
-  "name": "npn_leaderboard_api",
+  "name": "npn-leaderboard-api",
   "private": true,
   "type": "module",
   "dependencies": {
