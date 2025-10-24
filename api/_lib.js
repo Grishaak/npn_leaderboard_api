@@ -4,7 +4,7 @@ import { Redis } from "@upstash/redis";
 export const redis = Redis.fromEnv(); // читает UPSTASH_REDIS_REST_URL/TOKEN
 
 const ALLOWED = [
-  "https://grishaak.github.io/NPN-game/" // ← ПОСТАВЬ точный origin твоей игры
+  "https://grishaak.github.io" // ← ПОСТАВЬ точный origin твоей игры
 ];
 
 export function allow(req) {
@@ -15,6 +15,7 @@ export function allow(req) {
 export function cors(res, origin) {
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Headers", "content-type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
 }
 
 export function sanitizeName(raw) {
