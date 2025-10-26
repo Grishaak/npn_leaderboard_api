@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 import { redis, allow, cors, getClientIP } from "./_lib.js";
+import { ratelimit } from "./_ratelimit.js";
 
 export default async function handler(req, res) {
   const origin = allow(req);
-  cors(req, res, origin);  // ← СТАВИМ ЗАГОЛОВКИ СРАЗУ
-
+  cors(req, res, origin);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method" });
 
