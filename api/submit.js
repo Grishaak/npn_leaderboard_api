@@ -7,6 +7,7 @@ const ZKEY = "npn:lb:z"; // отсортированный набор с айд�
 
 export default async function handler(req, res) {
 
+  if (req.method === 'OPTIONS') return res.status(204).end();
     const origin = allow(req);
     cors(res, origin);
 
