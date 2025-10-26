@@ -10,8 +10,8 @@ export default async function handler(req, res) {
     cors(res, origin);
 
     // CORS preflight
-    if (req.method === "OPTIONS") { cors(res, origin); return res.status(204).end(); }
-    if (req.method !== "POST") { return res.status(405).end(); }
+    if (req.method === "OPTIONS")  return res.status(204).end();
+    if (req.method !== "POST")  return res.status(405).end(); 
 
     try {
         const ip = getClientIP(req);
