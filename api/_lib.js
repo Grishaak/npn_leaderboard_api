@@ -13,7 +13,7 @@ export function allow(req) {
 }
 
 export function cors(res, origin) {
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "content-type");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
 }
