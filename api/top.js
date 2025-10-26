@@ -5,7 +5,7 @@ const ZKEY = "npn:lb:z";
 
 export default async function handler(req, res) {
   const origin = allow(req);
-  cors
+  cors(res, origin);
   // CORS preflight
   if (req.method === "OPTIONS") { cors(res, origin); return res.status(204).end(); }
 
