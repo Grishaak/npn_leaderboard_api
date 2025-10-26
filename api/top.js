@@ -5,6 +5,7 @@ const ZKEY = "npn:lb:z";
 
 export default async function handler(req, res) {
   const origin = allow(req);
+  cors
   // CORS preflight
   if (req.method === "OPTIONS") { cors(res, origin); return res.status(204).end(); }
 
@@ -36,9 +37,9 @@ export default async function handler(req, res) {
     }));
 
     cors(res, origin);
-    return res.status(200).json({ ok:true, top });
+    return res.status(200).json({ ok: true, top });
   } catch (e) {
     cors(res, origin);
-    return res.status(500).json({ ok:false, error:"server", detail:String(e) });
+    return res.status(500).json({ ok: false, error: "server", detail: String(e) });
   }
 }

@@ -7,6 +7,7 @@ const ZKEY = "npn:lb:z"; // отсортированный набор с айд�
 
 export default async function handler(req, res) {
     const origin = allow(req);
+    cors(res, origin);
 
     // CORS preflight
     if (req.method === "OPTIONS") { cors(res, origin); return res.status(204).end(); }
