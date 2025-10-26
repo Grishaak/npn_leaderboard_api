@@ -26,4 +26,23 @@ export function sanitizeName(raw) {
   return s || "аноним";
 }
 
+export function getClientIP(req) {
+  // На Vercel X-Forwarded-For — официальный способ; они фильтруют спуфинг. :contentReference[oaicite:4]{index=4}
+  const xff = req.headers["x-forwarded-for"];
+  return Array.isArray(xff) ? xff[0] : (xff || "").split(",")[0].trim();
+}
 
+export async function verifyTurnstile(token, ip) {
+  if (!token) return false;
+  const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      secret: process.env.TURNSTILE_SECRET || "",
+      response: token,
+      remoteip: ip || "",
+    }),
+  });
+  const data = await r.json();
+  return !!data.success;
+}
