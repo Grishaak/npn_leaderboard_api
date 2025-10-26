@@ -25,10 +25,10 @@ export default async function handler(req, res) {
     if (!success) return res.status(429).json({ ok:false, error:"rate" });
 
     // капча (если секрета нет — можно пропустить в dev)
-    if ((process.env.TURNSTILE_SECRET || "").length > 0) {
-      const ok = await verifyTurnstile(cfTok, ip);
-      if (!ok) return res.status(400).json({ ok:false, error:"captcha" });
-    }
+    // if ((process.env.TURNSTILE_SECRET || "").length > 0) {
+    //   const ok = await verifyTurnstile(cfTok, ip);
+    //   if (!ok) return res.status(400).json({ ok:false, error:"captcha" });
+    // }
 
     // одноразовый nonce — «сжигаем»
     const nonceData = await redis.getdel(`npn:nonce:${nonce}`);
