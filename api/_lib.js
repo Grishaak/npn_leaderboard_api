@@ -14,11 +14,10 @@ export function allow(req) {
   return ALLOWED.includes(o) ? o : ALLOWED[0];
 }
 
-export function cors(req, res, origin) {
-  const reqHdr = req.headers["access-control-request-headers"];
+export function cors(res, origin) {
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", reqHdr || "content-type");
+  res.setHeader("Access-Control-Allow-Headers", "content-type");
 }
 
 // Утилиты, если нужны
