@@ -1,21 +1,16 @@
 {
-  "headers": [
+  "functions": {
+    "api/**.js": {
+      "runtime": "edge"
+    }
+  },
+  "regions": [
+    "iad1"
+  ],
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://grishaak.github.io"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET,POST,OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "content-type"
-        }
-      ]
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
     }
   ]
 }

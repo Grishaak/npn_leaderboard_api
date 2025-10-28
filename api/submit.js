@@ -1,61 +1,42 @@
-import crypto from "node:crypto";
-import { redis, allow, cors, sanitizeName, getClientIP, verifyTurnstile } from "./_lib.js";
-import { ratelimit } from "./_ratelimit.js";
+export const config = { runtime: "edge" };
 
-const ZKEY = "npn:lb:z";
+import { json, cors, originAllowed, ip, redis } from "./_lib.js";
+import { limit } from "./_ratelimit.js";
 
-export default async function handler(req, res) {
-  const origin = allow(req);
-  cors(req, res, origin);                 // ← ставим заголовки СРАЗУ
-  if (req.method === "OPTIONS") return res.status(204).end();    // ← preflight OK
-  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "method" });
+export default async function handler(req) {
+  if (req.method === "OPTIONS") return cors(req, new Response(null, { status: 204 }));
+  if (req.method !== "POST")   return cors(req, json(405, { ok:false, error:"method" }));
+  if (!originAllowed(req))     return cors(req, json(403, { ok:false, error:"origin" }));
 
-  try {
-    const ip = getClientIP(req);
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+  const { success } = await limit(`sub:${ip(req)}`, "submit");
+  if (!success) return cors(req, json(429, { ok:false, error:"rate" }));
 
-    const score = Number(body.score ?? 0) | 0;
-    const name = sanitizeName ? sanitizeName(body.name) : (String(body.name || "").trim().slice(0, 10) || "аноним");
-    const nonce = body.nonce || "";
-    const cfTok = body.cf_token || "";
-    const sessionMs = Number(body.session_ms || 0);
+  // Клиент шлёт text/plain с JSON-строкой
+  const raw = await req.text();
+  let body;
+  try { body = JSON.parse(raw); }
+  catch { return cors(req, json(400, { ok:false, error:"bad_json" })); }
 
-    // rate limit по IP
-    const { success } = await ratelimit.limit(`${ip}:submit`);
-    if (!success) return res.status(429).json({ ok: false, error: "rate" });
+  const name = String((body.name ?? "аноним")).slice(0, 10);
+  const score = Number(body.score);
+  const nonce = body.nonce;
+  const session_ms = Number(body.session_ms);
 
-    // капча(если секрета нет — можно пропустить в dev)
-    if ((process.env.TURNSTILE_SECRET || "").length > 0) {
-      const ok = await verifyTurnstile(cfTok, ip);
-      if (!ok) return res.status(400).json({ ok: false, error: "captcha" });
-    }
+  if (!nonce)                      return cors(req, json(400, { ok:false, error:"bad_nonce" }));
+  if (!Number.isFinite(score))     return cors(req, json(400, { ok:false, error:"bad_score" }));
+  if (score < 0 || score > (+process.env.NPN_MAX_SCORE || 100000))
+                                   return cors(req, json(400, { ok:false, error:"range" }));
+  if (!Number.isFinite(session_ms) || session_ms < (+process.env.NPN_MIN_SESSION_MS || 10000))
+                                   return cors(req, json(400, { ok:false, error:"too_fast" }));
 
-    // одноразовый nonce — «сжигаем»
-    const nonceData = await redis.getdel(`npn:nonce:${nonce}`);
-    if (!nonceData) return res.status(400).json({ ok: false, error: "nonce" });
-    const parsed = JSON.parse(nonceData);
-    const elapsed = Date.now() - (parsed.ts || 0);
+  const key = `npn:nonce:${nonce}`;
+  const state = await redis.get(key);
+  if (state !== "issued")          return cors(req, json(400, { ok:false, error:"nonce_state" }));
 
-    // sanity checks
-    if (!Number.isFinite(score) || score < 0) return res.status(400).json({ ok: false, error: "bad_score" });
-    if (elapsed < 12000 || sessionMs < 8000) return res.status(400).json({ ok: false, error: "too_fast" });
-    if (score > 1000000) return res.status(400).json({ ok: false, error: "too_high" });
+  await redis.set(key, "used", { ex: 600 });
 
-    // запись
-    const id = crypto.randomUUID();
-    await redis.hset(`npn:lb:entry:${id}`, { name, score, ts: Date.now(), ip });
-    await redis.zadd(ZKEY, { score, member: id });
+  // запись в ZSET
+  await redis.zadd("npn:lb", { score, member: JSON.stringify({ name, score, ts: Date.now() }) });
 
-    const total = await redis.zcard(ZKEY);
-    if (total > 2000) await redis.zremrangebyrank(ZKEY, 0, total - 2001);
-
-    // ранг
-    let rank0;
-    if (typeof redis.zrevrank === "function") rank0 = await redis.zrevrank(ZKEY, id);
-    else rank0 = await redis.zrank(ZKEY, id, { rev: true });
-
-    return res.status(200).json({ ok: true, rank: (rank0 ?? -1) + 1 });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: "server", detail: String(e) });
-  }
+  return cors(req, json(200, { ok:true }));
 }

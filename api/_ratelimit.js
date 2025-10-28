@@ -1,8 +1,12 @@
-// api/_ratelimit.js
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { redis } from "./_lib.js";
 
-export const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(5, "1 m"), // 5 запросов/мин на IP
-});
+const perMin = (n) => Ratelimit.slidingWindow(n, "1 m");
+
+const rlSubmit = new Ratelimit({ redis, limiter: perMin(+process.env.NPN_RATE_SUBMIT_PER_MIN || 6) });
+const rlChal   = new Ratelimit({ redis, limiter: perMin(+process.env.NPN_RATE_CHAL_PER_MIN   || 12) });
+
+export async function limit(key, kind = "chal") {
+  const r = kind === "submit" ? rlSubmit : rlChal;
+  return r.limit(key);
+}

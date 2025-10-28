@@ -5,24 +5,5 @@
   "dependencies": {
     "@upstash/redis": "^1.31.0",
     "@upstash/ratelimit": "^1.0.0"
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://grishaak.github.io"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET,POST,OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "content-type"
-        }
-      ]
-    }
-  ]
+  }
 }

@@ -1,62 +1,38 @@
-// api/_lib.js
+// Edge-friendly утилиты
 import { Redis } from "@upstash/redis";
 
-export const redis = Redis.fromEnv();
-
-// Разрешённые origin'ы (ТОЛЬКО origin, без пути и слеша)
-const ALLOWED = [
-  "https://grishaak.github.io",
-  // "http://localhost:5173", // если тестируешь локально
-  // "http://localhost:5500",
-];
-
-export function allow(req) {
-  const o = req.headers.origin || "";
-  return ALLOWED.includes(o) ? o : ALLOWED[0];
+// JSON-ответ
+export function json(status, obj) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" }
+  });
 }
 
-// ВАЖНО: отражаем запрошенные заголовки из preflight
-export function cors(req, res, origin) {
-  const reqHdr = req.headers["access-control-request-headers"];
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", reqHdr || "content-type");
+// CORS-обёртка: эхо-разрешение для допустимых Origins
+export function cors(req, res) {
+  const origin = req.headers.get("origin") || "";
+  const allowed = (process.env.NPN_ALLOWED_ORIGINS || "")
+    .split(",").map(s => s.trim()).filter(Boolean);
+  const okOrigin = !allowed.length || allowed.includes(origin);
+  const h = new Headers(res.headers);
+  h.set("access-control-allow-methods", "GET,POST,OPTIONS");
+  h.set("access-control-allow-headers", "content-type");
+  h.set("access-control-allow-origin", okOrigin ? origin : "null");
+  h.set("vary", "Origin");
+  return new Response(res.body, { status: res.status, headers: h });
 }
 
-export function getClientIP(req) {
-  const xff = req.headers["x-forwarded-for"];
-  return Array.isArray(xff) ? xff[0] : (xff || "").split(",")[0].trim();
+export function originAllowed(req) {
+  const origin = req.headers.get("origin") || "";
+  const allowed = (process.env.NPN_ALLOWED_ORIGINS || "")
+    .split(",").map(s => s.trim()).filter(Boolean);
+  return !allowed.length || allowed.includes(origin);
 }
 
-export function sanitizeName(raw) {
-  let s = (raw || "").trim().replace(/[^A-Za-z\u0400-\u04FF\s]/g, "").slice(0, 10);
-  return s || "аноним";
+export function ip(req) {
+  const xf = req.headers.get("x-forwarded-for") || "";
+  return xf.split(",")[0].trim() || "0.0.0.0";
 }
 
-// Нужен для health-чеки и понятных 500-ошибок
-export function ensureEnv() {
-  const miss = [];
-  if (!process.env.UPSTASH_REDIS_REST_URL) miss.push("UPSTASH_REDIS_REST_URL");
-  if (!process.env.UPSTASH_REDIS_REST_TOKEN) miss.push("UPSTASH_REDIS_REST_TOKEN");
-  return miss;
-}
-
-// Валидация Cloudflare Turnstile на сервере (submit)
-export async function verifyTurnstile(token, ip) {
-  if (!token) return false;
-  try {
-    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        secret: process.env.TURNSTILE_SECRET || "",
-        response: token,
-        remoteip: ip || "",
-      }),
-    });
-    const data = await r.json();
-    return !!data.success;
-  } catch {
-    return false;
-  }
-}
+export const redis = Redis.fromEnv(); // UPSTASH_REDIS_REST_URL / _TOKEN
